@@ -89,6 +89,23 @@ class OdooClient:
         if model not in self.config.writable_models:
             raise PermissionError(f"Escritura no permitida para el modelo: {model}")
 
+    def fields_get(
+        self, model: str, attributes: list[str] | None = None
+    ) -> dict[str, dict[str, Any]]:
+        self._ensure_allowed(model)
+        attrs = attributes or ["string", "type", "required", "readonly", "relation", "selection"]
+        return self._models_proxy().execute_kw(
+            self.config.db,
+            self.uid,
+            self.config.password,
+            model,
+            "fields_get",
+            [],
+            {"attributes": attrs},
+        )
+        if model not in self.config.writable_models:
+            raise PermissionError(f"Escritura no permitida para el modelo: {model}")
+
     def _ensure_writable(self, model: str) -> None:
         if model not in self.config.writable_models:
             raise PermissionError(f"Escritura no permitida para el modelo: {model}")

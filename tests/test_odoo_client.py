@@ -7,6 +7,9 @@ os.environ.setdefault("ODOO_DB", "odoo")
 os.environ.setdefault("ODOO_USER", "admin")
 os.environ.setdefault("ODOO_PASSWORD", "admin")
 os.environ.setdefault("ALLOWED_MODELS", "res.partner,sale.order")
+os.environ.setdefault("WRITABLE_MODELS", "res.partner")
+
+from dataclasses import replace
 
 from odoo_mcp.config import load_config
 from odoo_mcp.odoo_client import OdooClient
@@ -49,7 +52,6 @@ class TestOdooClient(unittest.TestCase):
         common.authenticate.return_value = 7
         models = MagicMock()
         models.execute_kw.return_value = [{"id": 1, "name": "Acme"}]
-        # ServerProxy se instancia dos veces: common y models
         proxy_cls.side_effect = [common, models]
         client = self._client()
         client.authenticate()
@@ -61,15 +63,27 @@ class TestOdooClient(unittest.TestCase):
         self.assertEqual(args[4], "search_read")
 
     @patch("odoo_mcp.odoo_client.xmlrpc.client.ServerProxy")
+    def test_fields_get_calls_execute_kw(self, proxy_cls):
+        common = MagicMock()
+        common.authenticate.return_value = 7
+        models = MagicMock()
+        models.execute_kw.return_value = {"name": {"type": "char", "required": True}}
+        proxy_cls.side_effect = [common, models]
+        client = self._client()
+        client.authenticate()
+        result = client.fields_get("res.partner", ["type", "required"])
+        self.assertIn("name", result)
+        models.execute_kw.assert_called_once()
+        self.assertEqual(models.execute_kw.call_args.args[4], "fields_get")
+
+    @patch("odoo_mcp.odoo_client.xmlrpc.client.ServerProxy")
     def test_create_calls_execute_kw(self, proxy_cls):
         common = MagicMock()
         common.authenticate.return_value = 7
         models = MagicMock()
         models.execute_kw.return_value = 42
         proxy_cls.side_effect = [common, models]
-        # writable: res.partner
         cfg = load_config()
-        from dataclasses import replace
         cfg = replace(cfg, writable_models=frozenset({"res.partner"}))
         client = OdooClient(cfg)
         client.authenticate()
@@ -81,7 +95,10 @@ class TestOdooClient(unittest.TestCase):
 
     @patch("odoo_mcp.odoo_client.xmlrpc.client.ServerProxy")
     def test_create_on_non_writable_raises(self, proxy_cls):
-        client = self._client()
+        cfg = load_config()
+        from dataclasses import replace
+        cfg = replace(cfg, writable_models=frozenset())
+        client = OdooClient(cfg)
         with self.assertRaises(PermissionError):
             client.create("res.partner", {"name": "X"})
 
@@ -93,14 +110,15 @@ class TestOdooClient(unittest.TestCase):
         models.execute_kw.side_effect = [True, [{"id": 10, "name": "Actualizado"}]]
         proxy_cls.side_effect = [common, models]
         cfg = load_config()
-        from dataclasses import replace
         cfg = replace(cfg, writable_models=frozenset({"res.partner"}))
         client = OdooClient(cfg)
         client.authenticate()
         result = client.update("res.partner", 10, {"name": "Actualizado"})
         self.assertEqual(result["name"], "Actualizado")
-        # dos llamadas: write y read (search_read? no, read)
         self.assertEqual(models.execute_kw.call_count, 2)
+
+    @patch("odoo_mcp.odoo_client.xmlrpc.client.ServerProxy")
+    def test_read_missing_raises(self, proxy_cls):
         common = MagicMock()
         common.authenticate.return_value = 7
         models = MagicMock()

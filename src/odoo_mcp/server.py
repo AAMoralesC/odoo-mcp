@@ -225,6 +225,51 @@ def _audit(action: dict, result: dict) -> None:
     print(line, file=sys.stderr, flush=True)
 
 
+# Cache en memoria del schema de modelos (cambia rara vez).
+_SCHEMA_CACHE: dict[str, str] = {}
+
+
+@mcp.resource("odoo://models")
+def resource_models() -> str:
+    """Lista los modelos de Odoo disponibles y si son escribibles."""
+    client = _get_client()
+    lines = ["# Modelos disponibles en odoo-mcp", ""]
+    for model in client.list_allowed_models():
+        writable = " (escribible)" if model in client.config.writable_models else ""
+        lines.append(f"- {model}{writable}")
+    lines.append("")
+    lines.append("Usa el recurso odoo://model/{modelo}/schema para ver sus campos.")
+    return "\n".join(lines)
+
+
+@mcp.resource("odoo://model/{model}/schema")
+def resource_model_schema(model: str) -> str:
+    """Schema (campos y tipos) de un modelo de Odoo. Solo lectura."""
+    client = _get_client()
+    if model not in client.config.allowed_models:
+        return f"Modelo no permitido: {model}. Disponibles: {', '.join(sorted(client.config.allowed_models))}"
+
+    if model in _SCHEMA_CACHE:
+        return _SCHEMA_CACHE[model]
+
+    try:
+        fields = client.fields_get(model)
+    except Exception as exc:
+        return f"Error al leer el schema de {model}: {exc}"
+
+    lines = [f"# {model}", "", f"Campos ({len(fields)}):", ""]
+    for name, meta in sorted(fields.items()):
+        ftype = meta.get("type", "?")
+        label = meta.get("string", name)
+        required = " [requerido]" if meta.get("required") else ""
+        readonly = " [solo lectura]" if meta.get("readonly") else ""
+        relation = f" -> {meta['relation']}" if meta.get("relation") else ""
+        lines.append(f"- {name}: {ftype}{relation} — {label}{required}{readonly}")
+    text = "\n".join(lines)
+    _SCHEMA_CACHE[model] = text
+    return text
+
+
 def main() -> None:
     try:
         _get_client().authenticate()
