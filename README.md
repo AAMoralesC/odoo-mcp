@@ -67,6 +67,9 @@ odoo-mcp
 
 ## 🔌 Conectarlo a tu agente
 
+El repo incluye un `opencode.json` listo para OpenCode: abre el proyecto en OpenCode y el
+servidor MCP de Odoo aparece automáticamente (requiere el venv creado con `pip install -e .`).
+
 **Claude Desktop** (`claude_desktop_config.json`):
 
 ```json
