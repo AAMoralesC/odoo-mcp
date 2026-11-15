@@ -1,0 +1,25 @@
+# Entorno
+.venv/
+venv/
+env/
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Build
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# IDE
+.vscode/
+.idea/
+
+# Odoo (demo local)
+.odoo-data/
+pgdata/
