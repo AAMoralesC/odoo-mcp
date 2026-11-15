@@ -1,0 +1,16 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "odoo": {
+      "type": "local",
+      "command": [".venv/bin/odoo-mcp"],
+      "environment": {
+        "ODOO_URL": "http://localhost:8069",
+        "ODOO_DB": "odoo",
+        "ODOO_USER": "admin",
+        "ODOO_PASSWORD": "admin",
+        "ALLOWED_MODELS": "res.partner,sale.order,account.move,product.product,project.project,project.task"
+      }
+    }
+  }
+}
