@@ -9,7 +9,8 @@
         "ODOO_DB": "odoo",
         "ODOO_USER": "admin",
         "ODOO_PASSWORD": "admin",
-        "ALLOWED_MODELS": "res.partner,sale.order,account.move,product.product,project.project,project.task"
+        "ALLOWED_MODELS": "res.partner,sale.order,account.move,product.product,project.project,project.task",
+        "WRITABLE_MODELS": "res.partner,project.task"
       }
     }
   }

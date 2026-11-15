@@ -86,3 +86,51 @@ class OdooClient:
         if not result:
             raise LookupError(f"Registro {record_id} no encontrado en {model}")
         return result[0]
+        if model not in self.config.writable_models:
+            raise PermissionError(f"Escritura no permitida para el modelo: {model}")
+
+    def _ensure_writable(self, model: str) -> None:
+        if model not in self.config.writable_models:
+            raise PermissionError(f"Escritura no permitida para el modelo: {model}")
+
+    def create(self, model: str, values: dict[str, Any]) -> int:
+        self._ensure_allowed(model)
+        self._ensure_writable(model)
+        if not isinstance(values, dict) or not values:
+            raise ValueError("values debe ser un dict no vacio")
+        return self._models_proxy().execute_kw(
+            self.config.db, self.uid, self.config.password, model, "create", [values]
+        )
+
+    def update(self, model: str, record_id: int, values: dict[str, Any]) -> dict[str, Any]:
+        self._ensure_allowed(model)
+        self._ensure_writable(model)
+        if not isinstance(values, dict) or not values:
+            raise ValueError("values debe ser un dict no vacio")
+        ok = self._models_proxy().execute_kw(
+            self.config.db,
+            self.uid,
+            self.config.password,
+            model,
+            "write",
+            [[record_id], values],
+        )
+        if not ok:
+            raise RuntimeError(f"No se pudo actualizar {model}#{record_id}")
+        return self.read(model, record_id)
+        self._ensure_allowed(model)
+        kwargs: dict[str, Any] = {}
+        if fields:
+            kwargs["fields"] = fields
+        result = self._models_proxy().execute_kw(
+            self.config.db,
+            self.uid,
+            self.config.password,
+            model,
+            "read",
+            [[record_id]],
+            kwargs,
+        )
+        if not result:
+            raise LookupError(f"Registro {record_id} no encontrado en {model}")
+        return result[0]

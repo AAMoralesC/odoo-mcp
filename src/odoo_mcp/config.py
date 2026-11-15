@@ -13,6 +13,7 @@ class Config:
     user: str
     password: str
     allowed_models: frozenset[str]
+    writable_models: frozenset[str]
 
 
 def load_config() -> Config:
@@ -32,4 +33,9 @@ def load_config() -> Config:
     if not models:
         raise ValueError("ALLOWED_MODELS no puede estar vacio")
 
-    return Config(url=url, db=db, user=user, password=password, allowed_models=models)
+    raw_writable = os.getenv("WRITABLE_MODELS", "")
+    writable = frozenset(m.strip() for m in raw_writable.split(",") if m.strip())
+    # la escritura solo puede ser subconjunto de la lectura
+    writable = writable & models
+
+    return Config(url=url, db=db, user=user, password=password, allowed_models=models, writable_models=writable)

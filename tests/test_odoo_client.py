@@ -61,7 +61,46 @@ class TestOdooClient(unittest.TestCase):
         self.assertEqual(args[4], "search_read")
 
     @patch("odoo_mcp.odoo_client.xmlrpc.client.ServerProxy")
-    def test_read_missing_raises(self, proxy_cls):
+    def test_create_calls_execute_kw(self, proxy_cls):
+        common = MagicMock()
+        common.authenticate.return_value = 7
+        models = MagicMock()
+        models.execute_kw.return_value = 42
+        proxy_cls.side_effect = [common, models]
+        # writable: res.partner
+        cfg = load_config()
+        from dataclasses import replace
+        cfg = replace(cfg, writable_models=frozenset({"res.partner"}))
+        client = OdooClient(cfg)
+        client.authenticate()
+        new_id = client.create("res.partner", {"name": "Nuevo"})
+        self.assertEqual(new_id, 42)
+        models.execute_kw.assert_called_once()
+        args = models.execute_kw.call_args.args
+        self.assertEqual(args[4], "create")
+
+    @patch("odoo_mcp.odoo_client.xmlrpc.client.ServerProxy")
+    def test_create_on_non_writable_raises(self, proxy_cls):
+        client = self._client()
+        with self.assertRaises(PermissionError):
+            client.create("res.partner", {"name": "X"})
+
+    @patch("odoo_mcp.odoo_client.xmlrpc.client.ServerProxy")
+    def test_update_calls_write_and_returns_record(self, proxy_cls):
+        common = MagicMock()
+        common.authenticate.return_value = 7
+        models = MagicMock()
+        models.execute_kw.side_effect = [True, [{"id": 10, "name": "Actualizado"}]]
+        proxy_cls.side_effect = [common, models]
+        cfg = load_config()
+        from dataclasses import replace
+        cfg = replace(cfg, writable_models=frozenset({"res.partner"}))
+        client = OdooClient(cfg)
+        client.authenticate()
+        result = client.update("res.partner", 10, {"name": "Actualizado"})
+        self.assertEqual(result["name"], "Actualizado")
+        # dos llamadas: write y read (search_read? no, read)
+        self.assertEqual(models.execute_kw.call_count, 2)
         common = MagicMock()
         common.authenticate.return_value = 7
         models = MagicMock()

@@ -25,8 +25,14 @@ El agente ve tres herramientas:
 | Herramienta | Qué hace |
 |---|---|
 | `list_allowed_models` | Modelos que el servidor permite consultar |
+| `list_writable_models` | Modelos en los que se permite escribir (con confirmacion) |
 | `search_records` | Busca registros con filtros estilo Odoo (`domain`) |
 | `read_record` | Lee un registro por ID |
+| `propose_create` | **Propone** crear un registro (no escribe). Devuelve `action_id` |
+| `propose_update` | **Propone** actualizar un registro (no escribe). Devuelve `action_id` |
+| `confirm_action` | Ejecuta una accion propuesta (solo tras confirmacion del usuario) |
+| `cancel_action` | Cancela una accion pendiente |
+| `list_pending_actions` | Lista las acciones pendientes de confirmacion |
 
 Por defecto **solo lectura**. La escritura llegará con confirmación explícita.
 
@@ -100,13 +106,26 @@ pip install -e .
 python -m unittest discover -s tests -v
 ```
 
+### Escritura con confirmacion
+
+La escritura es **siempre en dos pasos** para que el agente no modifique datos sin tu visto bueno:
+
+1. `propose_create` / `propose_update` devuelven una **vista previa** y un `action_id`. No tocan Odoo.
+2. El agente te muestra la vista previa. Solo si confirmas, llama a `confirm_action(action_id)`.
+3. Cada accion tiene un TTL de 5 minutos; si no la confirmas, expira.
+
+Todas las escrituras quedan en un **log de auditoria** (`[AUDIT] ...`) en stderr.
+
+Los modelos escribibles se configuran con `WRITABLE_MODELS` (subconjunto de `ALLOWED_MODELS`).
+Vacio = escritura deshabilitada. Por defecto: `res.partner,project.task`.
+
 ## 🗺️ Roadmap
 
 - [x] Lectura: list/search/read con allowlist
-- [ ] Escritura con confirmación (`create_record`, `update_record`)
-- [ ] Auditoría de acciones del agente
+- [x] Escritura con confirmacion (`propose_*` + `confirm_action`)
+- [x] Auditoria de acciones del agente
 - [ ] Recursos MCP (schema de modelos)
-- [ ] Publicación en PyPI
+- [ ] Publicacion en PyPI
 
 ## 📄 Licencia
 
